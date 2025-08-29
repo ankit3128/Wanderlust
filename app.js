@@ -17,6 +17,8 @@ const flash = require("connect-flash");
 const passport =require("passport");
 const LocalStrategy =require("passport-local");
 const User =require("./models/user.js");
+const Listing = require("./models/listing.js");
+
 
 
 // -------------------------
@@ -30,9 +32,9 @@ const user =require("./routes/user.js");
 // ✅ Connect to MongoDB
 // -------------------------
 
-// const Mongo_url="mongodb://127.0.0.1:27017/wanderlust"
+const Mongo_url="mongodb://127.0.0.1:27017/wanderlust"
 
-const dbUrl =process.env.ATLASDB_URL;
+// const dbUrl =process.env.ATLASDB_URL;
 
 
 
@@ -45,7 +47,7 @@ main()
   });
 
 async function main() {
-  await mongoose.connect(dbUrl);
+  await mongoose.connect(Mongo_url);
 }
 
 // -------------------------
@@ -63,21 +65,21 @@ app.use(express.static(path.join(__dirname, "/public")));
 
 
 // mongo session
-const store=MongoStore.create({
-  mongoUrl:dbUrl,
-  crypto:{
-    secret:process.env.SECRET,
-  },
-  touchAfter:24*3600,
-})
+// const store=MongoStore.create({
+//   mongoUrl:dbUrl,
+//   crypto:{
+//     secret:process.env.SECRET,
+//   },
+//   touchAfter:24*3600,
+// })
 
-store.on("error",()=>{
-  console.log("error in mongo session store",err);
-})
+// store.on("error",()=>{
+//   console.log("error in mongo session store",err);
+// })
 
 
 const sessionOptions={
-  store,
+  // store,
   secret:process.env.SECRET,
   resave:false,
   saveUninitialized:true,
@@ -133,8 +135,22 @@ next();
 //   let registeredUser=await User.register(fakeUser,"helloworld");
 //   res.send(registeredUser)
 // })
+ // for the search feature 
 
+app.get("/listings/search", async (req, res) => {
+  const { location } = req.query;
 
+  const results = await Listing.find({
+    $or: [
+     { title: { $regex: location, $options: "i" } },
+      { location: { $regex: location, $options: "i" } },
+      { country: { $regex: location, $options: "i" } }
+    ]
+  });
+
+  // ✅ Render same index.ejs with filtered results
+  res.render("listings/index", { allListings: results });
+});
 
 app.use("/listings", listings);
 app.use("/listings/:id/reviews", reviews);
